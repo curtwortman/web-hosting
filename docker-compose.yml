@@ -1,0 +1,70 @@
+services:
+  cluster-manager:
+    image: python:3.11-slim
+    command: bash -c "cd /app && apt-get update && apt-get install -y ansible && pip install -r requirements.txt && python3 scripts/cluster_manager_api.py --port 8000 --host 0.0.0.0"
+    volumes:
+      - ../cluster-manager:/app
+      - ../webtools-ui:/webtools-ui
+    ports:
+      - "127.0.0.1:8000:8000"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.8"
+          memory: "1g"
+    restart: unless-stopped
+
+  dc-planner:
+    image: node:18-alpine
+    command: sh -c "apk add --no-cache python3 && cd /app && npm install && python3 -m http.server 3199 --bind 0.0.0.0"
+    volumes:
+      - ../dc-planner:/app
+      - ../webtools-ui:/webtools-ui
+    ports:
+      - "127.0.0.1:8001:3199" # package.json serve script uses 3199
+    deploy:
+      resources:
+        limits:
+          cpus: "0.8"
+          memory: "1g"
+    restart: unless-stopped
+
+  wortman-website:
+    image: python:3.11-slim
+    command: bash -c "cd /app && pip install -r requirements.txt uvicorn && uvicorn main:app --host 0.0.0.0 --port 8000 --proxy-headers"
+    env_file: .env
+    environment:
+      - ROOT_PATH=/wortman-website
+      - VIXCI_UTILS_DIR=/vixci-utils
+      - PORT=8000
+    volumes:
+      - ../wortman-website:/app
+      - ../vixci-utils:/vixci-utils
+    ports:
+      - "127.0.0.1:8002:8000"
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: "1g"
+    restart: unless-stopped
+
+  vixci-website:
+    image: python:3.11-slim
+    command: bash -c "cd /app && pip install -r requirements.txt uvicorn && cd scripts && uvicorn main:app --host 0.0.0.0 --port 8000 --proxy-headers"
+    env_file: .env
+    environment:
+      - ROOT_PATH=/vixci-website
+      - VIXCI_UTILS_DIR=/vixci-utils
+      - PORT=8000
+    volumes:
+      - ../vixci-website:/app
+      - ../vixci-utils:/vixci-utils
+    ports:
+      - "127.0.0.1:8003:8000"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.8"
+          memory: "1g"
+    restart: unless-stopped

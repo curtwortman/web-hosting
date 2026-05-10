@@ -6,7 +6,7 @@
 # and copies the web‑hosting site (~/workspace/web-hosting) to the default
 # document root (/var/www/html) so both servers can serve the same content.
 
-set -euo pipefail
+# Allow safe sourcing without exiting on errors\nif [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then\n  set -euo pipefail\nelse\n  set +e\nfi
 
 #--- Helper functions -------------------------------------------------------
 log() {
@@ -50,21 +50,65 @@ sudo ufw allow 'Nginx Full'
 sudo ufw allow 'Apache Full'
 sudo ufw --force enable
 
-#--- Deploy site to /var/www/html ------------------------------------------
-WEB_SRC="$HOME/workspace/web-hosting"
-WEB_DST="/var/www/html"
-
+# Define source and destination directories
+WEB_SRC="${WEB_SRC:-$HOME/workspace/web-hosting}"
+WEB_DST="${WEB_DST:-/opt/web-hosting}"
+WORKSPACE_DIR="${WORKSPACE_DIR:-$HOME/workspace}"
 if [[ ! -d "$WEB_SRC" ]]; then
   error "Source directory $WEB_SRC does not exist."
 fi
 
-log "Copying site files to $WEB_DST..."
-# Preserve existing files but overwrite with newest version.
-sudo rsync -av --delete "$WEB_SRC/" "$WEB_DST/"
+log "Pulling latest updates for all repositories in $WORKSPACE_DIR..."
+for repo in "$WORKSPACE_DIR"/*; do
+  if [[ -d "$repo/.git" ]]; then
+    log "Pulling updates in $(basename "$repo")..."
+    git -C "$repo" pull || log "Warning: Failed to pull $(basename "$repo")"
+  fi
+done
 
-# Ensure proper permissions for the web server user (www-data)
+log "Copying site files to $WEB_DST..."
+sudo rsync -av --delete "$WEB_SRC/" "$WEB_DST/"
+  # Also copy static sites to legacy root paths for backward compatibility
+  for legacy in wortman-website vixci-website; do
+    LEGACY_PATH="/var/www/${legacy}"
+    SITE_SRC="$HOME/workspace/$legacy"
+    if [[ -d "$SITE_SRC" ]]; then
+      log "Copying $legacy to legacy path $LEGACY_PATH"
+      sudo mkdir -p "$LEGACY_PATH"
+      sudo rsync -av --delete "$SITE_SRC/" "$LEGACY_PATH/"
+    fi
+  done
+# Deploy static website directories to primary domain root
+PRIMARY_ROOT="${PRIMARY_ROOT:-/var/www/curt.wortman.ai}"
+log "Ensuring primary domain root $PRIMARY_ROOT exists"
+sudo mkdir -p "$PRIMARY_ROOT"
+# Copy static sites if they exist
+for site in llm-benchmark webtools-ui; do
+  SITE_SRC="$WORKSPACE_DIR/$site"
+  if [[ -d "$SITE_SRC" ]]; then
+    log "Copying $site to $PRIMARY_ROOT/$site"
+    sudo rsync -av --delete "$SITE_SRC/" "$PRIMARY_ROOT/$site/"
+  fi
+done
+
+
+
+# Set ownership for both destinations
 log "Setting ownership to www-data..."
-sudo chown -R www-data:www-data "$WEB_DST"
+sudo chown -R www-data:www-data "$WEB_DST" "$PRIMARY_ROOT"
+
+# Deploy Nginx configuration
+log "Deploying Nginx configuration..."
+sudo cp "$WEB_SRC/nginx/curt.wortman.ai.conf" /etc/nginx/sites-available/curt.wortman.ai
+sudo ln -sf /etc/nginx/sites-available/curt.wortman.ai /etc/nginx/sites-enabled/curt.wortman.ai
+
+# Ensure docker compose is available
+if docker compose version &> /dev/null; then
+  log "Restarting Docker containers with docker compose..."
+  cd "$WEB_SRC" && sudo docker compose up -d --force-recreate
+else
+  log "docker compose not found, skipping container deployment."
+fi
 
 #--- Verify both servers serve the same content ---------------------------
 log "Testing Nginx endpoint (http://localhost)..."
@@ -77,5 +121,5 @@ log "Testing Apache endpoint (http://localhost:8080)..."
 # /etc/apache2/ports.conf if needed.
 
 log "Setup complete! Your site is available at http://your_server_ip/"
-
+sudo systemctl restart nginx
 # End of script

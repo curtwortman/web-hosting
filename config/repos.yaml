@@ -1,0 +1,76 @@
+primary_domain: https://curt.wortman.ai
+secondary_domain: https://wortman.ai
+
+  - name: webtools-ui
+    description: Common UI css and js resources for cluster-manager, dc-planner, and llm-benchmark
+    repo_url: https://github.com/cwortman-amd/webtools-ui
+    type: library
+    deploy_path: /var/www/curt.wortman.ai/webtools-ui
+    nginx_location: null
+    build_commands: []
+    cpu_limit: null
+    memory_limit: null
+
+  - name: vixci-utils
+    description: Python/JS utility library (not a web service)
+    repo_url: https://github.com/curtwortman/vixci-utils
+    type: library
+    deploy_path: null
+    nginx_location: null
+    build_commands: []
+    cpu_limit: null
+    memory_limit: null
+
+  - name: wortman-website
+    description: FastAPI backend / Business & Family Portal
+    repo_url: https://github.com/curtwortman/wortman-website
+    type: container
+    deploy_path: /var/www/curt.wortman.ai/wortman-website
+    nginx_location: /wortman-website/
+    docker_service: wortman-website
+    build_commands: []
+    cpu_limit: "0.8"
+    memory_limit: "1g"
+
+  - name: vixci-website
+    description: FastAPI backend / ViXCi Platform
+    repo_url: https://github.com/curtwortman/vixci-website
+    type: container
+    deploy_path: /var/www/curt.wortman.ai/vixci-website
+    nginx_location: /vixci-website/
+    docker_service: vixci-website
+    build_commands: []
+    cpu_limit: "0.8"
+    memory_limit: "1g"
+
+  - name: dc-planner
+    description: Internal planning tool (containerized if UI needed)
+    repo_url: https://github.com/cwortman-amd/dc-planner
+    type: container
+    deploy_path: /var/www/curt.wortman.ai/dc-planner
+    nginx_location: /dc-planner/
+    docker_service: dc-planner
+    build_commands: []
+    cpu_limit: "0.8"
+    memory_limit: "1g"
+  
+  - name: cluster-manager
+    description: Ansible automation scripts with optional UI
+    repo_url: https://github.com/cwortman-amd/cluster-manager
+    type: container
+    deploy_path: /var/www/curt.wortman.ai/cluster-manager
+    nginx_location: /cluster-manager/
+    docker_service: cluster-manager
+    build_commands: []
+    cpu_limit: "0.8"
+    memory_limit: "1g"
+
+  - name: llm-benchmark
+    description: Benchmark scripts, static results site
+    repo_url: https://github.com/cwortman-amd/llm-benchmark
+    type: static
+    deploy_path: /var/www/curt.wortman.ai/llm-benchmark
+    nginx_location: /llm-benchmark/
+    build_commands: []
+    cpu_limit: null
+    memory_limit: null

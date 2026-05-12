@@ -45,6 +45,19 @@ The `web-hosting` directory holds:
    ```
    You should receive a `200 OK` response displaying the landing page.
 
+## Configuration
+This project uses environment variables for configuration. A template file `sample.env` is provided in the root directory.
+
+1. **Create a `.env` file**:
+   ```bash
+   cp sample.env .env
+   ```
+2. **Update the values**: Open `.env` and fill in the required credentials:
+   - `GEMINI_API_KEY`: Your Google Gemini API key.
+   - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`: OAuth2 credentials for Google login.
+   - `FAMILY_EMAILS` / `ADMIN_EMAILS`: Authorized email addresses for access control.
+   - `SECRET_KEY`: A secure random string for session signing.
+
 ## Deployment
 - Both Nginx and Apache serve from the same document root (`/var/www/html`).
 - If you need both running simultaneously, adjust Apache to listen on an alternative port (e.g., `8080`) and configure Nginx to proxy specific paths.

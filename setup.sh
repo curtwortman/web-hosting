@@ -83,13 +83,35 @@ PRIMARY_ROOT="${PRIMARY_ROOT:-/var/www/curt.wortman.ai}"
 log "Ensuring primary domain root $PRIMARY_ROOT exists"
 sudo mkdir -p "$PRIMARY_ROOT"
 # Copy static sites if they exist
-for site in llm-benchmark webtools-ui; do
+for site in dc-planner cluster-manager llm-benchmark demo-portal slide-presenter knowledge-exchange webtools-ui wortman-website; do
   SITE_SRC="$WORKSPACE_DIR/$site"
   if [[ -d "$SITE_SRC" ]]; then
     log "Copying $site to $PRIMARY_ROOT/$site"
+    sudo mkdir -p "$PRIMARY_ROOT/$site"
     sudo rsync -av --delete "$SITE_SRC/" "$PRIMARY_ROOT/$site/"
   fi
 done
+
+# Ensure shared webtools assets and pages symlinks exist in primary root
+if [[ -d "$PRIMARY_ROOT/webtools-ui" ]]; then
+  log "Setting up shared assets symlinks for webtools-ui..."
+  for asset_dir in css js assets data archives plugins.registry.json; do
+    if [[ -e "$PRIMARY_ROOT/webtools-ui/$asset_dir" ]]; then
+      sudo ln -sfn "$PRIMARY_ROOT/webtools-ui/$asset_dir" "$PRIMARY_ROOT/$asset_dir"
+    fi
+  done
+  sudo ln -sfn "$PRIMARY_ROOT/webtools-ui/pages" "$PRIMARY_ROOT/pages"
+
+  # Ensure install scripts are available under /tools/ for curl one-liners
+  if [[ -d "$PRIMARY_ROOT/webtools-ui/tools" && -d "$PRIMARY_ROOT/webtools-ui/pages" ]]; then
+    for script in "$PRIMARY_ROOT/webtools-ui/tools"/install-*.sh; do
+      if [[ -f "$script" ]]; then
+        sudo ln -sfn "$script" "$PRIMARY_ROOT/webtools-ui/pages/$(basename "$script")"
+      fi
+    done
+  fi
+fi
+
 
 
 
